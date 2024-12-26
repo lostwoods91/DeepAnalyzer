@@ -1,39 +1,42 @@
 // Copyright (C) 2024 Loris De Marchi. All rights reserved.
 
 #include "DeepAnalyzer.h"
-#include "DeepAnalyzerStyle.h"
-#include "DeepAnalyzerCommands.h"
+
+#include "EditorUtilitySubsystem.h"
+#include "EditorUtilityWidgetBlueprint.h"
+
 #include "LevelEditor.h"
+
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
+
 #include "ToolMenus.h"
 
-static const FName DeepAnalyzerTabName("DeepAnalyzer");
+#include "DADeveloperSettings.h"
+#include "DeepAnalyzerCommands.h"
+#include "DeepAnalyzerLog.h"
+#include "DeepAnalyzerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FDeepAnalyzerModule"
 
 void FDeepAnalyzerModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	
+
 	FDeepAnalyzerStyle::Initialize();
 	FDeepAnalyzerStyle::ReloadTextures();
 
 	FDeepAnalyzerCommands::Register();
-	
+
 	PluginCommands = MakeShareable(new FUICommandList);
 
 	PluginCommands->MapAction(
-		FDeepAnalyzerCommands::Get().OpenPluginWindow,
-		FExecuteAction::CreateRaw(this, &FDeepAnalyzerModule::PluginButtonClicked),
-		FCanExecuteAction());
+	    FDeepAnalyzerCommands::Get().OpenPluginWindow,
+	    FExecuteAction::CreateRaw(this, &FDeepAnalyzerModule::PluginButtonClicked),
+	    FCanExecuteAction());
 
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FDeepAnalyzerModule::RegisterMenus));
-	
-	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(DeepAnalyzerTabName, FOnSpawnTab::CreateRaw(this, &FDeepAnalyzerModule::OnSpawnPluginTab))
-		.SetDisplayName(LOCTEXT("FDeepAnalyzerTabTitle", "DeepAnalyzer"))
-		.SetMenuType(ETabSpawnerMenuType::Hidden);
 }
 
 void FDeepAnalyzerModule::ShutdownModule()
@@ -48,35 +51,33 @@ void FDeepAnalyzerModule::ShutdownModule()
 	FDeepAnalyzerStyle::Shutdown();
 
 	FDeepAnalyzerCommands::Unregister();
-
-	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(DeepAnalyzerTabName);
-}
-
-TSharedRef<SDockTab> FDeepAnalyzerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
-{
-	FText WidgetText = FText::Format(
-		LOCTEXT("WindowWidgetText", "Add code to {0} in {1} to override this window's contents"),
-		FText::FromString(TEXT("FDeepAnalyzerModule::OnSpawnPluginTab")),
-		FText::FromString(TEXT("DeepAnalyzer.cpp"))
-		);
-
-	return SNew(SDockTab)
-		.TabRole(ETabRole::NomadTab)
-		[
-			// Put your tab content here!
-			SNew(SBox)
-			.HAlign(HAlign_Center)
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-				.Text(WidgetText)
-			]
-		];
 }
 
 void FDeepAnalyzerModule::PluginButtonClicked()
 {
-	FGlobalTabmanager::Get()->TryInvokeTab(DeepAnalyzerTabName);
+	const UDADeveloperSettings* DADeveloperSettings = GetDefault<UDADeveloperSettings>();
+	UEditorUtilitySubsystem* EditorUtilitySubsystem = GEditor->GetEditorSubsystem<UEditorUtilitySubsystem>();
+
+	FName MainWidgetTabId;
+	if (UEditorUtilityWidgetBlueprint* MainWidget = DADeveloperSettings->MainWidget.LoadSynchronous())
+	{
+		EditorUtilitySubsystem->RegisterTabAndGetID(MainWidget, MainWidgetTabId);
+	}
+	else
+	{
+		UE_LOG(LogDeepAnalyzer, Warning, TEXT("Main widget class is missing. Please check project settings."));
+	}
+
+	bool bIsUIShown = EditorUtilitySubsystem->DoesTabExist(MainWidgetTabId);
+
+	if (!bIsUIShown)
+	{
+		EditorUtilitySubsystem->SpawnRegisteredTabByID(MainWidgetTabId);
+	}
+	else
+	{
+		EditorUtilitySubsystem->CloseTabByID(MainWidgetTabId);
+	}
 }
 
 void FDeepAnalyzerModule::RegisterMenus()
@@ -105,5 +106,5 @@ void FDeepAnalyzerModule::RegisterMenus()
 }
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FDeepAnalyzerModule, DeepAnalyzer)
