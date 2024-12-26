@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "DeepAnalyzer",
+	"Description": "A static module dependency analyzer for Unreal Engine 5",
+	"Category": "Other",
+	"CreatedBy": "Loris De Marchi",
+	"CreatedByURL": "https://github.com/lostwoods91/DeepAnalyzer",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "DeepAnalyzer",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
