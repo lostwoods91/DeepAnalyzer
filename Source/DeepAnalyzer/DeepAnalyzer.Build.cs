@@ -20,6 +20,8 @@ public class DeepAnalyzer : ModuleRules
             new string[]
             {
                 "Blutility",
+                "ContentBrowser",
+                "ContentBrowserData",
                 "CoreUObject",
                 "DeveloperSettings",
                 "EditorFramework",
@@ -30,6 +32,7 @@ public class DeepAnalyzer : ModuleRules
                 "Slate",
                 "SlateCore",
                 "ToolMenus",
+                "UMG",
                 "UMGEditor",
                 "UnrealEd",
             }

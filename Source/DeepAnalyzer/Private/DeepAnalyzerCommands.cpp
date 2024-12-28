@@ -6,7 +6,8 @@
 
 void FDeepAnalyzerCommands::RegisterCommands()
 {
-	UI_COMMAND(OpenPluginWindow, "DeepAnalyzer", "Bring up DeepAnalyzer window", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(OpenPluginWindow, "Open Window", "Bring up DeepAnalyzer window", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(DeepAnalyze, "Deep Analyze", "Deep analyze the selected assets", EUserInterfaceActionType::Button, FInputChord(EModifierKey::Shift | EModifierKey::Alt, EKeys::D));
 }
 
 #undef LOCTEXT_NAMESPACE

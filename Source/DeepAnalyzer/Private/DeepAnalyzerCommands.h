@@ -3,15 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Framework/Commands/Commands.h"
+
 #include "DeepAnalyzerStyle.h"
 
 class FDeepAnalyzerCommands : public TCommands<FDeepAnalyzerCommands>
 {
 public:
-
-	FDeepAnalyzerCommands()
-		: TCommands<FDeepAnalyzerCommands>(TEXT("DeepAnalyzer"), NSLOCTEXT("Contexts", "DeepAnalyzer", "DeepAnalyzer Plugin"), NAME_None, FDeepAnalyzerStyle::GetStyleSetName())
+	FDeepAnalyzerCommands() :
+	    TCommands<FDeepAnalyzerCommands>(TEXT("DeepAnalyzer"), NSLOCTEXT("Contexts", "DeepAnalyzer", "DeepAnalyzer Plugin"), NAME_None, FDeepAnalyzerStyle::GetStyleSetName())
 	{
 	}
 
@@ -19,5 +20,6 @@ public:
 	virtual void RegisterCommands() override;
 
 public:
-	TSharedPtr< FUICommandInfo > OpenPluginWindow;
+	TSharedPtr<FUICommandInfo> OpenPluginWindow;
+	TSharedPtr<FUICommandInfo> DeepAnalyze;
 };
