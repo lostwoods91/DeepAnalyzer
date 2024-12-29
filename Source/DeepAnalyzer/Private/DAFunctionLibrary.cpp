@@ -18,9 +18,9 @@
 #include "Interfaces/IProjectManager.h"
 #include "ProjectDescriptor.h"
 
-#include "DeepAnalyzerLog.h"
+#include "DependencyInfo.h"
 
-void UDAFunctionLibrary::Analyze(const TArray<FName>& SelectedPackages)
+void UDAFunctionLibrary::Analyze(const TArray<FName>& SelectedPackages, TArray<FDependencyInfo>& OutDependencyInfos)
 {
 	TArray<FAssetIdentifier> Identifiers;
 	for (FName Name : SelectedPackages)
@@ -28,121 +28,36 @@ void UDAFunctionLibrary::Analyze(const TArray<FName>& SelectedPackages)
 		Identifiers.Add(FAssetIdentifier(Name));
 	}
 
-	Analyze(Identifiers);
+	Analyze(Identifiers, OutDependencyInfos);
 }
 
-void UDAFunctionLibrary::Analyze(const TArray<FAssetIdentifier>& SelectedIdentifiers)
+void UDAFunctionLibrary::Analyze(const TArray<FAssetIdentifier>& SelectedIdentifiers, TArray<FDependencyInfo>& OutDependencyInfos)
+{
+	RecursivelyCollectDependencies(SelectedIdentifiers, OutDependencyInfos);
+}
+
+FName UDAFunctionLibrary::GetPackageName(const FDependencyInfo& DependencyInfo)
+{
+	return DependencyInfo.GetPackageName();
+}
+
+FName UDAFunctionLibrary::GetModuleName(const FDependencyInfo& DependencyInfo)
+{
+	return DependencyInfo.GetModuleName();
+}
+
+void UDAFunctionLibrary::RecursivelyCollectDependencies(const TArray<FAssetIdentifier>& Identifiers, TArray<FDependencyInfo>& OutDependencyInfos)
 {
 	IAssetRegistry& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
-
-	TArray<FAssetIdentifier> Dependencies;
-	for (FAssetIdentifier AssetIdentifier : SelectedIdentifiers)
+	TArray<FAssetIdentifier> TempDependencies;
+	for (const FAssetIdentifier& Identifier : Identifiers)
 	{
-		AssetRegistry.GetDependencies(AssetIdentifier, Dependencies, UE::AssetRegistry::EDependencyCategory::All, UE::AssetRegistry::EDependencyQuery::NoRequirements);
-	}
-}
-
-void UDAFunctionLibrary::RecursivelyCollectDependencies(const TArray<FAssetIdentifier>& Identifiers, TMap<FAssetIdentifier, FAssetData>& Dependencies)
-{
-}
-
-void UDAFunctionLibrary::GetReferencedModulesFromClass(UObject* Object, UClass* Class)
-{
-	if (Class == nullptr)
-	{
-		return;
+		OutDependencyInfos.AddUnique(FDependencyInfo(Identifier));
+		AssetRegistry.GetDependencies(Identifier, TempDependencies, UE::AssetRegistry::EDependencyCategory::All, UE::AssetRegistry::EDependencyQuery::NoRequirements);
 	}
 
-	TArray<FModuleStatus> ModuleStatuses;
-	FModuleManager::Get().QueryModules(ModuleStatuses);
-
-	TArray<FProperty*> Dependencies;
-	TArray<IModuleInterface*> ReferencedModules;
-	for (TFieldIterator<FProperty> PropIt(Class); PropIt; ++PropIt)
+	for (const FAssetIdentifier& Dependency : TempDependencies)
 	{
-		FProperty* Property = *PropIt;
-		{
-			Dependencies.Add(Property);
-			GetReferencedModulesFromObjectProperty(Object, Property, ReferencedModules);
-		}
-	}
-}
-
-void UDAFunctionLibrary::GetReferencedModulesFromObject(UObject* Object)
-{
-	if (Object)
-	{
-		for (TFieldIterator<FObjectPropertyBase> It(Object->GetClass()); It; ++It)
-		{
-			FObjectPropertyBase* Property = *It;
-			auto asd = Property->ContainerPtrToValuePtr<void>(Object, 0);
-			if (UObject* Value = Property->GetObjectPropertyValue(asd))
-			{
-				UE_LOG(LogDeepAnalyzer, Warning, TEXT("%s"), *Value->GetName());
-			}
-		}
-
-		GetReferencedModulesFromClass(Object, Object->GetClass());
-	}
-}
-
-void UDAFunctionLibrary::GetReferencedModulesFromBlueprint(UBlueprint* Blueprint)
-{
-	if (Blueprint)
-	{
-		GetReferencedModulesFromClass(Blueprint->GeneratedClass->GetDefaultObject(), Blueprint->GeneratedClass);
-	}
-}
-
-void UDAFunctionLibrary::GetReferencedModulesFromObjectProperty(UObject* Object, FProperty* Property, TArray<IModuleInterface*>& OutReferencedModules)
-{
-	if (FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property))
-	{
-		//FScriptArrayHelper ArrayHelper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<void>(Object));
-		GetReferencedModulesFromObjectProperty(Object, ArrayProperty->Inner, OutReferencedModules);
-	}
-	else if (FSetProperty* SetProperty = CastField<FSetProperty>(Property))
-	{
-		GetReferencedModulesFromObjectProperty(Object, SetProperty->ElementProp, OutReferencedModules);
-	}
-	else if (FMapProperty* MapProperty = CastField<FMapProperty>(Property))
-	{
-		GetReferencedModulesFromObjectProperty(Object, MapProperty->KeyProp, OutReferencedModules);
-		GetReferencedModulesFromObjectProperty(Object, MapProperty->ValueProp, OutReferencedModules);
-	}
-	else
-	{
-		UObject* PropertyObject = nullptr;
-
-		if (FObjectPropertyBase* ObjectPropertyBase = CastField<FObjectPropertyBase>(Property))
-		{
-			PropertyObject = Cast<UObject>(ObjectPropertyBase->PropertyClass);
-			//void* PropertyValue = Property->ContainerPtrToValuePtr<void>(Object);
-			//UObject* Value = ObjectPropertyBase->GetObjectPropertyValue(PropertyValue);
-		}
-		else if (FStructProperty* StructProperty = CastField<FStructProperty>(Property))
-		{
-			PropertyObject = Cast<UObject>(StructProperty->Struct);
-		}
-		else if (FEnumProperty* EnumProperty = CastField<FEnumProperty>(Property))
-		{
-			PropertyObject = Cast<UObject>(EnumProperty->GetEnum());
-		}
-
-		if (PropertyObject)
-		{
-			if (UPackage* Package = PropertyObject->GetPackage())
-			{
-				FStringView ModuleName;
-				if (FPackageName::TryConvertScriptPackageNameToModuleName(Package->GetName(), ModuleName))
-				{
-					if (IModuleInterface* ModuleInterface = FModuleManager::Get().GetModule(FName(ModuleName)))
-					{
-						OutReferencedModules.Add(ModuleInterface);
-						UE_LOG(LogDeepAnalyzer, Warning, TEXT("%s -> %s"), *Property->GetName(), *FName(ModuleName).ToString());
-					}
-				}
-			}
-		}
+		RecursivelyCollectDependencies({ Dependency }, OutDependencyInfos);
 	}
 }

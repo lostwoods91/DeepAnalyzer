@@ -133,9 +133,13 @@ void FDeepAnalyzerModule::OnExtendContentBrowserCommands(TSharedRef<FUICommandLi
 	CommandList->MapAction(FDeepAnalyzerCommands::Get().DeepAnalyze,
 	    FExecuteAction::CreateLambda([this, GetSelectionDelegate]
 	        {
-		        if (UDAMainWidget* DAMainWidget = FindOrSpawnWidgetTab())
+		        TArray<FName> SelectedPackages = GetContentBrowserSelectedAssetPackages(GetSelectionDelegate);
+		        if (SelectedPackages.Num() > 0)
 		        {
-			        UDAFunctionLibrary::Analyze(GetContentBrowserSelectedAssetPackages(GetSelectionDelegate));
+			        if (UDAMainWidget* DAMainWidget = FindOrSpawnWidgetTab())
+			        {
+				        DAMainWidget->Analyze(SelectedPackages);
+			        }
 		        }
 	        }));
 }
