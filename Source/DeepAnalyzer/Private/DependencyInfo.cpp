@@ -28,3 +28,42 @@ FName FDependencyInfo::GetModuleName() const
 		return *FString(FPathViews::GetMountPointNameFromPath(PackageNameView));
 	}
 }
+
+IModuleInterface* FDependencyInfo::GetModule() const
+{
+	FStringView PackageName = Identifier.PackageName.ToString();
+
+	FPackageName::IsScriptPackage(PackageName);
+
+	if (FPackageName::IsValidLongPackageName(PackageName))
+	{
+	}
+	else
+	{
+		// #todo test missing script modules
+	}
+
+	FString Root;
+	FString Path;
+	FString Name;
+	FPackageName::SplitLongPackageName(Identifier.PackageName.ToString(), Root, Path, Name);
+	FText Reason;
+	FPackageName::IsValidObjectPath(Identifier.PackageName.ToString(), &Reason);
+	FPackageName::IsValidLongPackageName(Identifier.PackageName.ToString(), true);
+
+	FStringView ModuleName;
+	if (FPackageName::TryConvertScriptPackageNameToModuleName(Identifier.PackageName.ToString(), ModuleName))
+	{
+		if (IModuleInterface* ModuleInterface = FModuleManager::Get().GetModule(FName(ModuleName)))
+		{
+			UE_LOG(LogDeepAnalyzer, Warning, TEXT("%s -> %s"), *Identifier.PackageName.ToString(), *FName(ModuleName).ToString());
+			return ModuleInterface;
+		}
+		else
+		{
+			UE_LOG(LogDeepAnalyzer, Warning, TEXT("Can't find module for identifier: %s"), *Identifier.PackageName.ToString());
+		}
+	}
+
+	return nullptr;
+}

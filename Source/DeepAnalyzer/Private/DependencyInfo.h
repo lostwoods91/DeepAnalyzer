@@ -35,4 +35,6 @@ public:
 
 	FName GetPackageName() const;
 	FName GetModuleName() const;
+
+	IModuleInterface* GetModule() const;
 };
